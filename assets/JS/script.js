@@ -63,6 +63,8 @@ function handleAddTask(event) {
     status: "to-do",
   };
 
+  console.log("Adding task:", task); // Debugging log
+
   taskList.push(task);
   saveToLocalStorage();
   renderTaskList();
