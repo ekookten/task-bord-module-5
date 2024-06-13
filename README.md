@@ -23,3 +23,4 @@ Manage Tasks:
 As you complete tasks, drag and drop them into the "In Process" or "Done" sections of the app.
 This rephrased version maintains the original meaning and provides a clear and concise description of the application and its functionality.
 
+Deployment link: https://ekookten.github.io/task-bord-module-5/
