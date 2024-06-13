@@ -15,8 +15,8 @@ function saveToLocalStorage() {
 
 // Create a task card
 function createTaskCard(task) {
-  return $(`
-    <div class="card mb-3" data-id="${task.id}">
+  const taskCard = $(`
+    <div class="card mb-3 draggable" data-id="${task.id}">
       <div class="card-body">
         <h5 class="card-title">${task.title}</h5>
         <p class="card-text">${task.description}</p>
@@ -27,25 +27,58 @@ function createTaskCard(task) {
       </div>
     </div>
   `);
+
+  const cardDeleteBtn = taskCard.find(".delete-task");
+
+  if (task.dueDate && task.status !== "done") {
+    const now = dayjs();
+    const taskDueDate = dayjs(task.dueDate, "YYYY-MM-DD");
+    if (now.isSame(taskDueDate, "day")) {
+      taskCard.addClass("bg-warning text-white");
+    } else if (now.isAfter(taskDueDate)) {
+      taskCard.addClass("bg-danger text-white");
+      cardDeleteBtn.addClass("border-light");
+    }
+  }
+
+  return taskCard;
 }
 
 // Render the task list and make cards draggable
 function renderTaskList() {
-  $("#todo-cards, #in-progress-cards, #done-cards").empty();
+  const todoList = $("#todo-cards");
+  todoList.empty();
 
-  taskList.forEach((task) => {
-    const taskCard = createTaskCard(task);
-    $(`#${task.status}-cards`).append(taskCard);
-  });
+  const inProgressList = $("#in-progress-cards");
+  inProgressList.empty();
 
-  $(".card").draggable({
-    revert: "invalid",
-    helper: "clone",
-  });
+  const doneList = $("#done-cards");
+  doneList.empty();
 
-  $(".lane").droppable({
-    accept: ".card",
-    drop: handleDrop,
+  // loop through tasks and create task cards for each status
+  for (let task of taskList) {
+    if (task.status === "to-do") {
+      todoList.append(createTaskCard(task));
+    } else if (task.status === "in-progress") {
+      inProgressList.append(createTaskCard(task));
+    } else if (task.status === "done") {
+      doneList.append(createTaskCard(task));
+    }
+  }
+
+  $(".draggable").draggable({
+    opacity: 0.7,
+    zIndex: 100,
+    // function to clone the card being dragged so that the original card remains in place
+    helper: function (e) {
+      // check if the target of the drag event is the card itself or a child element if it is the card itself, clone it, otherwise find the parent card and clone that
+      const original = $(e.target).hasClass("ui-draggable")
+        ? $(e.target)
+        : $(e.target).closest(".ui-draggable");
+      return original.clone().css({
+        maxWidth: original.outerWidth(),
+      });
+    },
   });
 
   $(".delete-task").click(handleDeleteTask);
@@ -59,7 +92,7 @@ function handleAddTask(event) {
     id: generateTaskId(),
     title: $("#taskTitle").val(),
     description: $("#taskDescription").val(),
-    dueDate: $("#taskDueDate").val(),
+    dueDate: $("#taskDueDate").val(), // Ensure dueDate is in YYYY-MM-DD format
     status: "to-do",
   };
 
@@ -85,13 +118,15 @@ function handleDeleteTask(event) {
 
 // Handle dropping a task into a new status lane
 function handleDrop(event, ui) {
-  const card = ui.draggable;
-  const taskId = card.data("id");
-  const newStatus = $(this).attr("id").split("-")[0];
+  const taskId = ui.draggable.data("id");
+  const newStatus = event.target.id;
 
-  taskList = taskList.map((task) =>
-    task.id === taskId ? { ...task, status: newStatus } : task
-  );
+  for (let task of taskList) {
+    // update the task status of the dragged card
+    if (task.id === parseInt(taskId)) {
+      task.status = newStatus;
+    }
+  }
 
   saveToLocalStorage();
   renderTaskList();
@@ -101,7 +136,14 @@ function handleDrop(event, ui) {
 $(document).ready(function () {
   renderTaskList();
 
-  $("#taskDueDate").datepicker();
-
   $("#taskForm").submit(handleAddTask);
+
+  $(".lane").droppable({
+    accept: ".draggable",
+    drop: handleDrop,
+  });
+
+  $("#taskDueDate").datepicker({
+    dateFormat: "yy-mm-dd", // Ensure the date picker uses the same format
+  });
 });
